@@ -119,7 +119,16 @@ function handleAPILoaded() {
 }
 
 
+
+
+var allVidsData = {};
+var ignoredVideos = {}; // for interest tracking
+var DEBUG = true; // Turn on to prevent ignoring videos
+
 function getAllVideos() {
+  // RESET videodata to be empty
+  allVidsData = {};
+
   // Define some variables used to remember state.
   var playlistId, nextPageToken, prevPageToken;
 
@@ -150,22 +159,48 @@ function getAllVideos() {
     }
     var request = gapi.client.youtube.playlistItems.list(requestOptions);
     request.execute(function(response) {
+
+
       // Only show pagination buttons if there is a pagination token for the
       // next or previous page of results.
       nextPageToken = response.result.nextPageToken;
-      var nextVis = nextPageToken ? 'visible' : 'hidden';
-      $('#next-button').css('visibility', nextVis);
+      //var nextVis = nextPageToken ? 'visible' : 'hidden';
+      //$('#next-button').css('visibility', nextVis);
       prevPageToken = response.result.prevPageToken
-      var prevVis = prevPageToken ? 'visible' : 'hidden';
-      $('#prev-button').css('visibility', prevVis);
+      //var prevVis = prevPageToken ? 'visible' : 'hidden';
+      //$('#prev-button').css('visibility', prevVis);
 
       var playlistItems = response.result.items;
       if (playlistItems) {
         $.each(playlistItems, function(index, item) {
-          displayResult(item.snippet);
+
+          // Add results into global variable to send back to server for thumbnail retreival
+          // [id] => "video title"
+          if (!DEBUG && item.snippet.title != "SF5 Smash 4 - Serge (Lucario) Vs. Darkfall (Link) SSB4 Tournament - Smash Wii U") {
+            ignoredVideos[item.snippet.resourceId.videoId] = item.snippet.title;
+          } else {
+            allVidsData[item.snippet.resourceId.videoId] = item.snippet.title;
+          }
+
         });
+
+        // If more videos, grab them all.
+        if (nextPageToken) {
+          requestVideoPlaylist(playlistId, nextPageToken);
+        } else {
+
+          console.log("[D] Done retrieving videos. Now sending to server to get thumbnails...");
+
+          sendDataToBackend(allVidsData);
+
+          //displayResult(item.snippet); // Not atm TODO: Show later
+        }
+
+
       } else {
-        $('#video-container').html('Sorry you have no uploaded videos');
+        $('#video-container').html(
+          "Sorry you have no uploaded videos. If this seems wrong, verify on gmail.com you're logged in right."
+        );
       }
     });
   }
@@ -197,6 +232,37 @@ function getAllVideos() {
   requestUserUploadsPlaylistId();
 }
 
+function sendDataToBackend(allVidsData) {
+  $.ajax({
+    dataType: "json",
+    url: '/yt/yt_thumbnails_receive',
+    data: allVidsData,
+    type: 'POST', // Can send much more data than GET
+    success: function (resObj, status, jqXHR) {
+      console.log("[D] Received full thumbnail data with video suggestions:", Object.keys(resObj).length, "items.");
+      displayVideoResults(resObj);
+    },
+    error: function() {
+      alert("WARNING! Sending the video data to the backend failed. Maybe a timeout happened? STOPPING. YOU STOP TOO.")
+    }
+  });
+}
+
+function displayVideoResults(videoData) {
+  // clear
+  $('#video-container').html('');
+
+  $.each(videoData, function (id, vidInfo) {
+
+    $('#video-container').append(
+      '<div class="ytvideo">' +
+        '<img class="ytthumbnail" src="' + 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg?custom=true&w=360&h=202&stc=true&jpg444=true&jpgq=90&sp=68' + '" /> ' +
+        '<div class="yttitle">' + id + ' - ' + vidInfo + '</div>' +
+      '</div>'
+    );
+
+  });
+}
 
 </script>
 <script src="https://apis.google.com/js/client.js?onload=googleApiClientReady"></script>
