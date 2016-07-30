@@ -124,6 +124,7 @@ function handleAPILoaded() {
 var allVidsData = {};
 var ignoredVideos = {}; // for interest tracking
 var DEBUG = true; // Turn on to prevent ignoring videos
+var VID_LIMIT = 1000; // Concerned about API quota limits. Raise this if you're fearless
 
 function getAllVideos() {
   // RESET videodata to be empty
@@ -185,15 +186,14 @@ function getAllVideos() {
         });
 
         // If more videos, grab them all.
-        if (nextPageToken) {
+        if (nextPageToken && Object.keys(allVidsData).length < VID_LIMIT) {
           requestVideoPlaylist(playlistId, nextPageToken);
         } else {
 
-          console.log("[D] Done retrieving videos. Now sending to server to get thumbnails...");
+          console.log("[D] Done retrieving", Object.keys(allVidsData).length,
+            "videos. Now sending to server to get thumbnails...");
 
           sendDataToBackend(allVidsData);
-
-          //displayResult(item.snippet); // Not atm TODO: Show later
         }
 
 
@@ -262,6 +262,30 @@ function displayVideoResults(videoData) {
     );
 
   });
+
+  // Now show CONTROLS on top right for rename actions.
+  $('.controls').show();
+
+}
+
+
+function performUpdates() {
+  // grab updated names from HTML in page, displayed/possibly edited?
+
+  // $('.videos') ...
+
+  // send update API request for video
+
+  var resource = {
+    snippet: {
+      title: video.snippet.title,
+      description: updatedDescription,
+      categoryId: '22'
+    },
+    id: video.snippet.resourceId.videoId
+  };
+  YouTube.Videos.update(resource, 'id,snippet');
+
 }
 
 </script>
