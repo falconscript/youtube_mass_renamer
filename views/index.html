@@ -17,7 +17,8 @@
   Authorized! Viewing videos now:
 
   <div id="video-container"></div>
-  <div class="button-container">
+
+  <div class="button-container" style="display:none;">
     <button id="prev-button" class="paging-button">Previous Page</button>
     <button id="next-button" class="paging-button">Next Page</button>
   </div>
@@ -43,6 +44,9 @@
   display:block;
   float:left;
   margin-left:50px;
+}
+.clearfix {
+  clear:both;
 }
 </style>
 
@@ -213,7 +217,8 @@ function getAllVideos() {
       '<div class="ytvideo">' +
         '<img class="ytthumbnail" src="' + 'https://i.ytimg.com/vi/' + videoId + '/hqdefault.jpg?custom=true&w=360&h=202&stc=true&jpg444=true&jpgq=90&sp=68' + '" /> ' +
         '<div class="yttitle">' + title + ' - ' + videoId + '</div>' +
-      '</div>'
+      '</div>' +
+      '<div class="clearfix"></div>'
     );
   }
 
