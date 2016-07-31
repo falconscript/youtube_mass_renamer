@@ -47,17 +47,61 @@ function getThumbnailIfNotGotten(videoId, callback) {
   }
 }
 
+function toBuffer(ab) {
+  var buffer = new Buffer(ab.byteLength);
+  var view = new Uint8Array(ab);
+  for (var i = 0; i < buffer.length; ++i) {
+    buffer[i] = view[i];
+  }
+  return buffer;
+}
+
+
+
 function getOpticalDataIfNotGotten(videoId, callback) {
   var txtFilePath = './public/yt_data/' + videoId + '.txt';
+  var thumbnailPath = './public/yt_data/' + videoId + '.jpg';
+
 
   // if text was not saved for this FETCH USING API
   if (!fs.existsSync(txtFilePath)) {
-    // TODO: USE API...
-    var foundText = 'test found text';
-      fs.writeFileSync(txtFilePath, foundText);
-      return callback(foundText);
+
+    // https://ocr.space/ might be better. FINDS more text, but is more stringent
+    var request = require('request'),
+        username = "freshfalcon",
+        password = "<OMITTED>";
+
+    console.log("[D] Sending request for", videoId);
+
+    var req = request({
+        url: 'http://www.ocrwebservice.com/restservices/processDocument?gettext=true',
+        headers: {
+            "Authorization" : "Basic " + new Buffer(username + ":" + password).toString("base64"),
+            "Content-Type": 'application/json'
+        },
+        method: "POST"
+    }, function (err, resp, body) {
+      if (err || resp.statusCode != 200) {
+        console.log('Error!');
+      } else {
+        //console.log("BODY:", body); // super debugging
+
+        var foundText = JSON.parse(body).OCRText[0][0]; // Parse and rip out junk.
+        console.log('[D] Received valid text for', videoId, "->", foundText);
+
+        fs.writeFileSync(txtFilePath, foundText);
+        return callback(foundText);
+
+      }
+    });
+    var form = req.form();
+    form.append('file', fs.readFileSync(thumbnailPath) /*toBuffer(file.data)*/, {
+      filename: thumbnailPath.split('/').pop(),
+      contentType: 'image/jpeg'
+    });
+
   } else {
-    return callback(fs.readFileSync(txtFilePath));
+    return callback(fs.readFileSync(txtFilePath).toString());
   }
 
 }

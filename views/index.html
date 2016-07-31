@@ -316,9 +316,9 @@ function displayVideoResults(videoData) {
     $('#video-container').append(
       '<div class="ytvideo">' +
         '<img class="ytthumbnail" src="/yt_data/' + id + '.jpg" /> ' +
-        '<div class="yttitle">Suggested Name: ' + vidInfo.textFound + '</div>' +
+        '<div class="yttitle">Suggested Name: ' + vidInfo.suggestedTitle + '</div>' +
         '<div class="ytFoundText">Text Found: ' + vidInfo.textFound + '</div>' +
-        '<input class="ytTitleInput" value="' + vidInfo.textFound + '" />' +
+        '<input class="ytTitleInput" value="' + vidInfo.suggestedTitle + '" />' +
         '<input type="hidden" class="vidId" value="' + id + '" />' +
         '<div class="clearfix"></div>' +
       '</div>'
