@@ -1,32 +1,78 @@
-<h1> YouTube fixer stuff. </h1>
+<!-- Add bootstrap. Why not? It looks better -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+<title>YouTube Mass Editor (for GimR)</title>
 
 
-<div class="pre-auth">
-  We need an OAuth token from the YouTube API in order to perform actions on your videos.
-  <br />
-  <br />
-  Click here to open a google.com login window to authorize this script to perform changes:
-  <br />
-  <br />
-  <a href="#" id="login-link">
-    <input type="button" value="Authenticate" style="width:200px;height:100px;background:lightblue;" />
-  </a>
+<div class="header">
+  <div class="projectname">YouTube Mass Editor</div>
+
+  <div class="controls">
+
+    Number of videos to retrieve: <input type="text" placeholder="1000" value="1000" class="vidLimit" />
+    <input type="button" value="Fetch Videos and Process Thumbnails" class="fetchAndProcess btn btn-primary" style="display:none;" />
+    <input type="button" value="Perform these Rename Actions" class="performRenames btn btn-success" style="display:none;" />
+
+  </div>
+  <div class="progress"></div>
+
 </div>
 
-<div class="post-auth" style="display:none">
-  Authorized! Viewing videos now:
-
-  <div id="video-container"></div>
-
-  <div class="button-container" style="display:none;">
-    <button id="prev-button" class="paging-button">Previous Page</button>
-    <button id="next-button" class="paging-button">Next Page</button>
+<div class="content">
+  <div class="pre-auth">
+    We need an OAuth token from the YouTube API in order to perform actions on your videos.
+    <br />
+    <br />
+    Click here to open a google.com login window to authorize this script to perform changes:
+    <br />
+    <br />
+    <a href="#" id="login-link">
+      <input type="button" value="Authenticate" class="btn btn-success btn-large" style="width:200px;height:100px;" />
+    </a>
   </div>
 
+  <div class="post-auth" style="display:none">
+    <div id="status">
+      Authorized! Please set desired video count to fetch for renaming,
+      and click "Fetch Videos and Process Thumbnails"
+    </div>
+
+    <div id="video-container"></div>
+
+    <div class="button-container" style="display:none;">
+      <button id="prev-button" class="paging-button">Previous Page</button>
+      <button id="next-button" class="paging-button">Next Page</button>
+    </div>
+
+  </div>
 </div>
 
 
 <style>
+.header {
+  height:100px;
+  min-width: 700px;
+}
+.projectname {
+  font-size:40px;
+  font-weight:bold;
+  display:inline-block;
+}
+.controls {
+  display:inline-block;
+  margin-left: 100px;
+}
+.controls. input {
+  margin-left:10px;
+}
+.content {
+  height:calc(100% - 100px); /* everything but header */
+  overflow-y: scroll;
+}
+.progress {
+  display:inline;
+  margin:50px 0px 20px 0px;
+}
+
 .ytvideo {
   padding:20px;
 }
@@ -35,15 +81,27 @@
   height: 170px;
   display:block;
   float:left;
+  margin-right:50px;
 }
 .yttitle {
-  font-size:40px;
-  height:170px;
-  width:50%;
+  font-size:30px;
+  /*height:170px;*/
+  width:calc(100% - 270px); /* ytthumbnail's width + margin-right */
   font-weight:bold;
   display:block;
   float:left;
-  margin-left:50px;
+}
+.ytFoundText {
+  font-size: 25px;
+  font-style: italic;
+  display:block;
+  float:left;
+  width:calc(100% - 270px); /* ytthumbnail's width + margin-right */
+}
+.ytTitleInput {
+  width: 50%;
+  padding:6px;
+  margin-top:10px;
 }
 .clearfix {
   clear:both;
@@ -119,7 +177,8 @@ function handleAPILoaded() {
   // AUTH RECEIVED. Load up video information
   console.log("[D] Authorized!");
 
-  getAllVideos();
+  // Show getVideos button
+  $('.fetchAndProcess').show();
 }
 
 
@@ -128,9 +187,8 @@ function handleAPILoaded() {
 var allVidsData = {};
 var ignoredVideos = {}; // for interest tracking
 var DEBUG = true; // Turn on to prevent ignoring videos
-var VID_LIMIT = 1000; // Concerned about API quota limits. Raise this if you're fearless
 
-function getAllVideos() {
+function getVideos(VID_LIMIT) {
   // RESET videodata to be empty
   allVidsData = {};
 
@@ -156,7 +214,7 @@ function getAllVideos() {
     $('#video-container').html('');
     var requestOptions = {
       playlistId: playlistId,
-      part: 'snippet',
+      part: 'snippet', // contentDetails
       maxResults: 50
     };
     if (pageToken) {
@@ -164,8 +222,6 @@ function getAllVideos() {
     }
     var request = gapi.client.youtube.playlistItems.list(requestOptions);
     request.execute(function(response) {
-
-
       // Only show pagination buttons if there is a pagination token for the
       // next or previous page of results.
       nextPageToken = response.result.nextPageToken;
@@ -189,12 +245,19 @@ function getAllVideos() {
 
         });
 
+        var curVidsLength = Object.keys(allVidsData).length;
+
         // If more videos, grab them all.
-        if (nextPageToken && Object.keys(allVidsData).length < VID_LIMIT) {
+        if (nextPageToken && curVidsLength < VID_LIMIT) {
+          $('#status').html('Collecting videos... ' + curVidsLength + ' collected so far...');
           requestVideoPlaylist(playlistId, nextPageToken);
         } else {
+          $('#status').html(
+            'Finished - Retrieved ' + curVidsLength + ' videos. Downloading thumbnails to disk...'
+            + '<br /><br />BE PATIENT. This can take a few minutes for every thousand videos.'
+          );
 
-          console.log("[D] Done retrieving", Object.keys(allVidsData).length,
+          console.log("[D] Done retrieving", curVidsLength,
             "videos. Now sending to server to get thumbnails...");
 
           sendDataToBackend(allVidsData);
@@ -222,20 +285,10 @@ function getAllVideos() {
     );
   }
 
-
-  // Retrieve the next page of videos in the playlist.
-  $('#next-button').on('click', function nextPage() {
-    requestVideoPlaylist(playlistId, nextPageToken);
-  });
-
-  // Retrieve the previous page of videos in the playlist.
-  $('#prev-button').on('click', function previousPage() {
-    requestVideoPlaylist(playlistId, prevPageToken);
-  });
-
-  // PERFORM
+  // get first set of videos through youtube API
   requestUserUploadsPlaylistId();
 }
+
 
 function sendDataToBackend(allVidsData) {
   $.ajax({
@@ -259,39 +312,134 @@ function displayVideoResults(videoData) {
 
   $.each(videoData, function (id, vidInfo) {
 
+    // Excellent spot for ReactJS btw. In a hurry though
     $('#video-container').append(
       '<div class="ytvideo">' +
-        '<img class="ytthumbnail" src="' + 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg?custom=true&w=360&h=202&stc=true&jpg444=true&jpgq=90&sp=68' + '" /> ' +
-        '<div class="yttitle">' + id + ' - ' + vidInfo + '</div>' +
+        '<img class="ytthumbnail" src="/yt_data/' + id + '.jpg" /> ' +
+        '<div class="yttitle">Suggested Name: ' + vidInfo.textFound + '</div>' +
+        '<div class="ytFoundText">Text Found: ' + vidInfo.textFound + '</div>' +
+        '<input class="ytTitleInput" value="' + vidInfo.textFound + '" />' +
+        '<input type="hidden" class="vidId" value="' + id + '" />' +
+        '<div class="clearfix"></div>' +
       '</div>'
     );
 
   });
 
-  // Now show CONTROLS on top right for rename actions.
-  $('.controls').show();
+  $('#status').html('Thumbnails downloaded and images scanned. Ready to perform rename actions.');
 
+  // Enable RENAME action button
+  $('.controls .performRenames').show();
 }
 
 
-function performUpdates() {
-  // grab updated names from HTML in page, displayed/possibly edited?
 
-  // $('.videos') ...
+/////////// Onclicks
 
-  // send update API request for video
+// Retrieve the next page of videos in the playlist.
+$('#next-button').on('click', function nextPage() {
+  requestVideoPlaylist(playlistId, nextPageToken);
+});
 
-  var resource = {
-    snippet: {
-      title: video.snippet.title,
-      description: updatedDescription,
-      categoryId: '22'
-    },
-    id: video.snippet.resourceId.videoId
-  };
-  YouTube.Videos.update(resource, 'id,snippet');
+// Retrieve the previous page of videos in the playlist.
+$('#prev-button').on('click', function previousPage() {
+  requestVideoPlaylist(playlistId, prevPageToken);
+});
 
+// Set button hook
+$('.fetchAndProcess').on('click', function () {
+  $('.fetchAndProcess').hide(); // Hide immediately. No spamming this!
+
+  var VID_LIMIT = $('.vidLimit').val(); // Concerned about API quota limits. Raise this if you're fearless
+  getVideos(VID_LIMIT); // pointer not passed to allow enclosure for closure
+});
+
+// Send rename requests
+$('.performRenames').on('click', function performUpdates() {
+  $('.performRenames').hide(); // no clickspam
+  $('#status').html('Sending out rename requests... Be patient. This takes a while and uses heavy CPU.');
+  // grab updated names from HTML in page
+
+  totalRenameRequestsToDo = $('#video-container .ytvideo').size();
+
+  $('#video-container .ytvideo').each(function (index, el) {
+    el = $(el); // make jquery item
+
+    sendRenameRequest(el.find('.ytTitleInput').val(), el.find('.ytTitleInput').val(), el.find('.vidId').val());
+  });
+
+
+});
+
+var renameRequestsQueued = 0;
+var renameRequestsStarted = 0;
+var renameRequestsFinished = 0;
+var totalRenameRequestsToDo = 0;
+var errorHappened = false;
+
+function sendRenameRequest(newTitle, newDesc, curId) {
+    if (errorHappened) return; // stop if errorHappened
+
+    setTimeout(function () {
+      if (errorHappened) return; // stop if errorHappened
+
+      // get video categoryId. This is to prevent the categoryId from mutation
+      /*gapi.client.request({
+        'path': '/youtube/v3/videoCategories',
+        'params': {'part': 'snippet', 'id': curId }
+      }).then(function (response) {
+        console.log(response);
+      }); */
+
+
+      // send update API request for video
+      var resource = {
+        snippet: {
+          title: newTitle,
+          //description: newDesc, // Not changing at this moment
+          // http://stackoverflow.com/questions/17698040/youtube-api-v3-where-can-i-find-a-list-of-each-videocategoryid
+          // XXX: This argument is REQUIRED. I can't find a way to retrieve the original either.
+          // 20 is gaming. 22 is blogs.
+          categoryId: 20
+        },
+        id: curId
+      };
+
+      gapi.client.request({
+        'path': '/youtube/v3/videos',
+        'method': 'PUT',
+        'params': {'part': 'id,snippet'}, // might have to change to id,snippet
+        'body': resource
+      }).then(function(resp) {
+        //console.log(resp.result);
+        console.log("[D]", ++renameRequestsFinished, "renames FINISHED...");
+        $('.progress').html("[Progress=>] " + renameRequestsFinished + " of " + totalRenameRequestsToDo + " renames FINISHED...");
+
+        if (renameRequestsFinished == totalRenameRequestsToDo) {
+          alert('All video renames are complete!');
+          $('#video-container').html('All video renames completed. Refresh to rename more videos.');
+        }
+
+      }, function(reason) {
+        errorHappened = true;
+        console.log('Error: ' + reason.result.error.message);
+        alert("Error doing rename call! Here's the information:\n" + reason.result.error.message);
+      });
+
+      console.log("[D]", ++renameRequestsStarted, "requests sent...");
+
+
+
+
+    // Enforce only 50 requests per second
+    }, Math.floor(++renameRequestsQueued / 50)*1000);
 }
+
+
+// prevent anything but numbers in vidLimit
+$(function() {
+  $('.vidLimit').on('keydown', function(e){-1!==$.inArray(e.keyCode,[46,8,9,27,13,110,190])||/65|67|86|88/.test(e.keyCode)&&(!0===e.ctrlKey||!0===e.metaKey)||35<=e.keyCode&&40>=e.keyCode||(e.shiftKey||48>e.keyCode||57<e.keyCode)&&(96>e.keyCode||105<e.keyCode)&&e.preventDefault()});
+})
 
 </script>
 <script src="https://apis.google.com/js/client.js?onload=googleApiClientReady"></script>

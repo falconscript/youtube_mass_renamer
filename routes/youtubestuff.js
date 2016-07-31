@@ -52,9 +52,9 @@ function getOpticalDataIfNotGotten(videoId, callback) {
 
   // if text was not saved for this FETCH USING API
   if (!fs.existsSync(txtFilePath)) {
-    // USE API...
+    // TODO: USE API...
     var foundText = 'test found text';
-      fs.writeFileSync(foundText);
+      fs.writeFileSync(txtFilePath, foundText);
       return callback(foundText);
   } else {
     return callback(fs.readFileSync(txtFilePath));
@@ -82,6 +82,7 @@ router.post('/yt_thumbnails_receive', function (req, res) {
         // set in json object and send back
         retJson[i] = {
           id: videoJson,
+          suggestedTitle: foundText, // If a list of vid titles existed, heuristics here
           textFound: foundText
         };
 
