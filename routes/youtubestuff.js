@@ -68,8 +68,8 @@ function getOpticalDataIfNotGotten(videoId, callback) {
 
     // https://ocr.space/ might be better. FINDS more text, but is more stringent
     var request = require('request'),
-        username = "freshfalcon",
-        password = "<OMITTED>";
+        username = "<api_username>",
+        password = "<api_password>";
 
     console.log("[D] Sending request for", videoId);
 
