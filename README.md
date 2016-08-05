@@ -8,8 +8,8 @@ Get an API key and username from http://www.ocrwebservice.com and place them in 
 
 To get up and running:
 ```bash
-git clone https://github.com/falconscript/gimrhelp
-cd gimrhelp
+git clone https://github.com/falconscript/youtube_mass_renamer
+cd youtube_mass_renamer
 npm install
 npm start # Start server
 ```
