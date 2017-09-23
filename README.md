@@ -24,4 +24,4 @@ API also limits requests. Using multiple API keys/IPs would be able to get aroun
 
 # Credits
 Made by just me for the public good  
-http://c-cfalcon.rhcloud.com
+http://x64projects.tk/
